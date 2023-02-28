@@ -2,6 +2,7 @@
 
 
 from piece import Piece, EnumPiece, EnumColor
+import math
 
 
 FileDict = {"A": 0, "B": 1, "C": 2, "D": 3, "E": 4, "F": 5, "G": 6, "H": 7}
@@ -34,21 +35,25 @@ class Board:
 
     def __str__(self):
         """."""
-        s = ""
-        for i in range(0, len(self.board)):
+        sa = [" A  B  C  D  E  F  G  H |  ",
+              "---------------------------",
+              ""]
+        j = len(sa) - 1
+        for i in range(len(self.board)):
             p = self.board[i]
             if p is None:
-                s += "[]"
+                sa[j] += "[]"
             else:
-                s += str(p)
+                sa[j] += str(p)
             if i % 8 == 7:
-                s += "\n"
+                sa[j] += f" | {(i+1)/8}"
+                sa.append("")
+                j += 1
             else:
-                s += " "
+                sa[j] += " "
+        return "\n".join(sa[::-1])
 
-        return s
-
-    def __rep__(self):
+    def __repr__(self):
         """."""
         return self.__str__()
 
@@ -100,42 +105,159 @@ class Board:
 
         return moveindex
 
-    def get(self, location):
+    def parse_location(self, location):
+        """Take a location as str or int and return index."""
+        parsed_location = None
+        if isinstance(location, int):
+            return location
+        if isinstance(location, str):
+            return self.parse_movestring(location)
+        return parsed_location
+
+    # TODO: I think it would be helpful to include a rank and file
+    # offset from the initial location.
+    def get(self, location) -> Piece:
         """Handle the getting of a piece from the board."""
         # I'm thinking that I might allow location to be either the
         # direct index, or a movestring.
-        parsed_location = None
-        if isinstance(location, int):
-            parsed_location = location
-        if isinstance(location, str):
-            parsed_location = self.parse_movestring(location)
-
-        return self.board[parsed_location]
+        return self.board[self.parse_location(location)]
 
     def set(self, location, piece: Piece):
         """Handle the setting of a piece from the board."""
-        parsed_location = None
-        if isinstance(location, int):
-            parsed_location = location
-        if isinstance(location, str):
-            parsed_location = self.parse_movestring(location)
+        self.board[self.parse_location(location)] = piece
 
-        self.board[parsed_location] = piece
-
-    def valid_move(self, movefromi, movetoi):
+    def get_rank(self, location):
         """."""
-        if movefromi < 0 or movefromi > 63:
+        return (self.parse_location(location) // 8) + 1
+
+    def get_file(self, location):
+        """."""
+        return (self.parse_location(location) % 8) + 1
+
+    def rank_dist(self, movefrom, moveto):
+        """."""
+        return abs(
+            self.get_rank(movefrom) - self.get_rank(moveto)
+        )
+
+    def rank_dir(self, movefrom, moveto):
+        """
+        Determine the rank direction of movement.
+
+         0: no movement
+         1: white to black
+        -1: black to white
+        """
+        diff = self.get_rank(moveto) - self.get_rank(movefrom)
+        direction = math.copysign(1, diff)
+        if diff == 0:
+            direction = 0
+        return direction
+
+    def file_dist(self, movefrom, moveto):
+        """."""
+        return abs(
+            self.get_file(movefrom) - self.get_file(moveto)
+        )
+
+    def valid_bounds(self, location):
+        """."""
+        location = self.parse_location(location)
+        if location < 0 or location > 63:
             return False
-        if movetoi < 0 or movetoi > 63:
+        return True
+
+    def validate_pos_diff(self, movefrom, moveto):
+        """Naive validation based on relative distances."""
+        rank_dist = self.rank_dist(movefrom, moveto)
+        file_dist = self.file_dist(movefrom, moveto)
+
+        piece = self.get(movefrom)
+        if piece.piece == EnumPiece.PAWN:
+            # TODO: I might need to include en passant logic here.
+            rank_dir = self.rank_dir(movefrom, moveto)
+            if file_dist != 0:
+                return False
+            if rank_dist > 2:
+                return False
+            if rank_dist > 1 and piece.moved:
+                return False
+            if rank_dir > 0:
+                return piece.color == EnumColor.WHITE
+            if rank_dir < 0:
+                return piece.color == EnumColor.Black
+            return False
+        if piece.piece == EnumPiece.BISHOP:
+            return rank_dist == file_dist
+        if piece.piece == EnumPiece.KNIGHT:
+            # Moving by 2 in one direction and 1 in direction means
+            # that the distances should multiply to 2
+            return rank_dist * file_dist == 2
+        if piece.piece == EnumPiece.ROOK:
+            # We need to ensure that a piece is moving in exactly one
+            # direction.
+            return 0 in [rank_dist, file_dist]
+        if piece.piece == EnumPiece.QUEEN:
+            return (0 in [rank_dist, file_dist] or
+                    rank_dist == file_dist)
+        # TODO: Might need to add validation for castling as early as
+        # here... or before this function gets called?
+        if piece.piece == EnumPiece.KING:
+            return (rank_dist <= 1 and
+                    file_dist <= 1)
+
+        return None
+
+    def validate_path(self, movefrom, moveto):
+        """Naive validation based on path."""
+        rank_dist = self.rank_dist(movefrom, moveto)
+        file_dist = self.file_dist(movefrom, moveto)
+
+        piece = self.get(movefrom)
+        if piece.piece == EnumPiece.PAWN:
+            # TODO: I might need to include en passant logic here.
+            for dRank in range(1, rank_dist + 1):
+                pass
+        if piece.piece == EnumPiece.BISHOP:
+            return rank_dist == file_dist
+        if piece.piece == EnumPiece.KNIGHT:
+            return rank_dist * file_dist == 2
+        if piece.piece == EnumPiece.ROOK:
+            return 0 in [rank_dist, file_dist]
+        if piece.piece == EnumPiece.QUEEN:
+            return (0 in [rank_dist, file_dist] or
+                    rank_dist == file_dist)
+        # TODO: Might need to add validation for castling as early as
+        # here... or before this function gets called?
+        if piece.piece == EnumPiece.KING:
+            return (rank_dist <= 1 and
+                    file_dist <= 1)
+
+    # TODO: Some of these functions will have to be able to take in an
+    # alternate board to determine, e.g., whether a move will result
+    # with the user in check.
+    def valid_move(self, movefrom, moveto):
+        """."""
+        movefromi = self.parse_location(movefrom)
+        movetoi = self.parse_location(moveto)
+        if not self.valid_bounds(movefromi):
+            return False
+        if not self.valid_bounds(movetoi):
+            return False
+        if self.get(movefromi) is None:
+            return False
+        if movefromi == movetoi:
+            return False
+        if not self.validate_pos_diff(movefromi, movetoi):
             return False
 
-        # I need to increment the state_board in the case of a valid move
+        # TODO: I need to increment the state_board in the case of a valid move
 
         return True
 
     def move(self, movefrom, moveto):
         """Evaluate the move given in the form of, e.g., ("A1", "B3")."""
-        # Handle the case where the move strings are invalid.
+        # TODO: Handle the case where the move strings are invalid.
         movefromi = self.parse_movestring(movefrom)
         movetoi = self.parse_movestring(moveto)
 
@@ -143,14 +265,17 @@ class Board:
 
         if self.valid_move(movefromi, movetoi):
             self.set(movetoi, self.get(movefromi))
+            # TODO: It's not safe to assume that the movefrom location
+            # will be pieceless as in the case of, e.g., castling.
+            self.set(movefromi, None)
             moving_piece.moved = True
 
-            # I might want to include my en passant logic here. I will
+            return True
+
+            # TODO: I might want to include my en passant logic here. I will
             # probably do htis with a state board tracking whether a
             # move has happened, and by tagging pawns that are able to
             # en passant on the next turn? Not sure. Perhaps instead
             # of a state board, each piece should check their own
             # counts?
-
-            if self.state_board[movefromi] == 0:
-                self.state_board[movefromi] = 1
+        return False
