@@ -8,6 +8,11 @@ from math import copysign
 FileDict = {"A": 0, "B": 1, "C": 2, "D": 3, "E": 4, "F": 5, "G": 6, "H": 7}
 RankDict = {"1": 0, "2": 1, "3": 2, "4": 3, "5": 4, "6": 5, "7": 6, "8": 7}
 
+# TODO: I'm thinking that the board should store a "pieces" object
+# which will just be a linked list of the pieces... perhaps along with
+# their location? Maybe a dictionary would do better. Yeah, and
+# perhaps there should be a piece id that gets stored?
+
 
 class Board:
     """Handle the board logic."""
@@ -209,7 +214,7 @@ class Board:
             if rank_dir > 0:
                 return piece.color == EnumColor.WHITE
             if rank_dir < 0:
-                return piece.color == EnumColor.Black
+                return piece.color == EnumColor.BLACK
             return False
         if piece.piece == EnumPiece.BISHOP:
             return rank_dist == file_dist
@@ -242,8 +247,10 @@ class Board:
         piece = self.get(movefrom)
         if piece.piece == EnumPiece.PAWN:
             # TODO: I might need to include en passant logic here.
+            # TODO: I'll also need logic for attacking an opponent on
+            # the diagonal
             for d_rank in range(1, rank_dist + 1):
-                pathpiece = self.get(movefrom, rankoffset=d_rank)
+                pathpiece = self.get(movefrom, rankoffset=d_rank*rank_dir)
                 if pathpiece is not None:
                     return False
             return True
@@ -320,12 +327,14 @@ class Board:
         # direction, ignoring checking whether the move is
         # valid.
         if not self.validate_pos_diff(movefromi, movetoi):
+            print("Validating position differences failed...")
             return False
         # Validate whether the move the player is trying to make is
         # possible w.r.t. the paths between the to and from move. That
         # is to say, ensure that there isn't a piece blocking the move
         # from happening by being in the path between to and from
         if not self.validate_path(movefromi, movetoi):
+            print("Validating path failed...")
             return False
 
         # TODO: I need validation based on en passant and castling
