@@ -2,7 +2,7 @@
 
 
 from piece import Piece, EnumPiece, EnumColor
-import math
+from math import copysign
 
 
 FileDict = {"A": 0, "B": 1, "C": 2, "D": 3, "E": 4, "F": 5, "G": 6, "H": 7}
@@ -105,7 +105,7 @@ class Board:
 
         return moveindex
 
-    def parse_location(self, location):
+    def parse_location(self, location) -> int:
         """Take a location as str or int and return index."""
         parsed_location = None
         if isinstance(location, int):
@@ -116,11 +116,13 @@ class Board:
 
     # TODO: I think it would be helpful to include a rank and file
     # offset from the initial location.
-    def get(self, location) -> Piece:
+    def get(self, location, rankoffset=0, fileoffset=0) -> Piece:
         """Handle the getting of a piece from the board."""
         # I'm thinking that I might allow location to be either the
         # direct index, or a movestring.
-        return self.board[self.parse_location(location)]
+        return self.board[
+            self.parse_location(location) + fileoffset + (8*rankoffset)
+        ]
 
     def set(self, location, piece: Piece):
         """Handle the setting of a piece from the board."""
@@ -140,6 +142,14 @@ class Board:
             self.get_rank(movefrom) - self.get_rank(moveto)
         )
 
+    def rank_diff(self, movefrom, moveto):
+        """."""
+        return self.get_rank(moveto) - self.get_rank(movefrom)
+
+    def file_diff(self, movefrom, moveto):
+        """."""
+        return self.get_file(moveto) - self.get_file(movefrom)
+
     def rank_dir(self, movefrom, moveto):
         """
         Determine the rank direction of movement.
@@ -148,8 +158,22 @@ class Board:
          1: white to black
         -1: black to white
         """
-        diff = self.get_rank(moveto) - self.get_rank(movefrom)
-        direction = math.copysign(1, diff)
+        diff = self.rank_diff(movefrom, moveto)
+        direction = int(copysign(1, diff))
+        if diff == 0:
+            direction = 0
+        return direction
+
+    def file_dir(self, movefrom, moveto):
+        """
+        Determine the rank direction of movement.
+
+         0: no movement
+         1: white to black
+        -1: black to white
+        """
+        diff = self.file_diff(movefrom, moveto)
+        direction = int(copysign(1, diff))
         if diff == 0:
             direction = 0
         return direction
@@ -212,26 +236,65 @@ class Board:
         """Naive validation based on path."""
         rank_dist = self.rank_dist(movefrom, moveto)
         file_dist = self.file_dist(movefrom, moveto)
+        rank_dir = self.rank_dir(movefrom, moveto)
+        file_dir = self.file_dir(movefrom, moveto)
 
         piece = self.get(movefrom)
         if piece.piece == EnumPiece.PAWN:
             # TODO: I might need to include en passant logic here.
-            for dRank in range(1, rank_dist + 1):
-                pass
-        if piece.piece == EnumPiece.BISHOP:
-            return rank_dist == file_dist
+            for d_rank in range(1, rank_dist + 1):
+                pathpiece = self.get(movefrom, rankoffset=d_rank)
+                if pathpiece is not None:
+                    return False
+            return True
+        # if piece.piece == EnumPiece.BISHOP:
+        #     for d_diag in range(1, rank_dist + 1):
+        #         pathpiece = self.get(movefrom,
+        #                              rankoffset=copysign(d_diag,
+        #                                                  rank_dir),
+        #                              fileoffset=copysign(d_diag,
+        #                                                  file_dir))
+        #         if pathpiece is None:
+        #             continue
+        #         if pathpiece.color == piece.color:
+        #             return False
+        #         # We now know that there is a piece, and that the
+        #         # piece is of the opposite color
+        #         # if d_diag != rank_dist:
+        #         if pathpiece is not None:
+        #             return False
+        #     return True
         if piece.piece == EnumPiece.KNIGHT:
-            return rank_dist * file_dist == 2
-        if piece.piece == EnumPiece.ROOK:
-            return 0 in [rank_dist, file_dist]
+            topiece = self.get(moveto)
+            return (topiece is None or
+                    topiece.color != piece.color)
+        if piece.piece in [EnumPiece.ROOK,
+                           EnumPiece.BISHOP,
+                           EnumPiece.QUEEN]:
+            for offset in range(1,
+                                max(rank_dist,
+                                    file_dist) + 1):
+                topiece = self.get(movefrom,
+                                   fileoffset=offset*file_dir,
+                                   rankoffset=offset*rank_dir)
+                if topiece is None:
+                    continue
+                if topiece.color == piece.color:
+                    return False
+                # We now know that there is a piece, and that the
+                # piece is of the opposite color
+                # if d_diag != rank_dist:
+                if topiece is not None:
+                    return False
+            return True
         if piece.piece == EnumPiece.QUEEN:
-            return (0 in [rank_dist, file_dist] or
-                    rank_dist == file_dist)
+            pass
         # TODO: Might need to add validation for castling as early as
         # here... or before this function gets called?
         if piece.piece == EnumPiece.KING:
-            return (rank_dist <= 1 and
-                    file_dist <= 1)
+            topiece = self.get(moveto)
+            return (topiece is None or
+                    topiece.color != piece.color)
 
     # TODO: Some of these functions will have to be able to take in an
     # alternate board to determine, e.g., whether a move will result
@@ -240,16 +303,32 @@ class Board:
         """."""
         movefromi = self.parse_location(movefrom)
         movetoi = self.parse_location(moveto)
+        # Ensure both to and from are on the board
         if not self.valid_bounds(movefromi):
             return False
         if not self.valid_bounds(movetoi):
             return False
+        # Ensure that you are actually moving a piece
         if self.get(movefromi) is None:
             return False
+        # You shoudn't be able to move to where you currently are
         if movefromi == movetoi:
             return False
+        # Validate the positional differences naively. This will check
+        # that you are moving the piece "correctly," e.g., that
+        # bishops move on the diagonal, rooks only move in a single
+        # direction, ignoring checking whether the move is
+        # valid.
         if not self.validate_pos_diff(movefromi, movetoi):
             return False
+        # Validate whether the move the player is trying to make is
+        # possible w.r.t. the paths between the to and from move. That
+        # is to say, ensure that there isn't a piece blocking the move
+        # from happening by being in the path between to and from
+        if not self.validate_path(movefromi, movetoi):
+            return False
+
+        # TODO: I need validation based on en passant and castling
 
         # TODO: I need to increment the state_board in the case of a valid move
 
@@ -272,10 +351,10 @@ class Board:
 
             return True
 
-            # TODO: I might want to include my en passant logic here. I will
-            # probably do htis with a state board tracking whether a
-            # move has happened, and by tagging pawns that are able to
-            # en passant on the next turn? Not sure. Perhaps instead
-            # of a state board, each piece should check their own
-            # counts?
+            # TODO: I might want to include my en passant/castling
+            # logic here. I will probably do htis with a state board
+            # tracking whether a move has happened, and by tagging
+            # pawns that are able to en passant on the next turn? Not
+            # sure. Perhaps instead of a state board, each piece
+            # should check their own counts?
         return False
