@@ -36,7 +36,19 @@ class Board:
         self.board = [None] * 64
         self.state_board = [0] * 64
 
+        self.pieces = {}
         self.init_board()
+        self.init_pieces()
+        print(self.board)
+
+    def init_pieces(self):
+        """."""
+        for loc in range(len(self.board)):
+            piece = self.get(loc)
+            if piece is None:
+                continue
+            print(piece.id, piece.tag)
+            self.pieces[piece] = loc
 
     def get_board(self):
         """."""
@@ -89,7 +101,8 @@ class Board:
                    self.parse_movestring("H2") + 1] = [
                        Piece(EnumPiece.PAWN,
                              EnumColor.WHITE)
-                   ] * 8
+                       for _ in range(8)
+                   ]
 
         # init black pieces
         # init non-pawns
@@ -102,7 +115,8 @@ class Board:
                    self.parse_movestring("H7") + 1] = [
                        Piece(EnumPiece.PAWN,
                              EnumColor.BLACK)
-                   ] * 8
+                       for _ in range(8)
+                   ]
 
     def parse_movestring(self, movestring):
         """Parse a move string from File-Rank notation to an index."""
@@ -135,7 +149,9 @@ class Board:
 
     def set(self, location, piece: Piece):
         """Handle the setting of a piece from the board."""
-        self.board[self.parse_location(location)] = piece
+        loc = self.parse_location(location)
+        self.board[loc] = piece
+        self.pieces[piece] = loc
 
     def get_rank(self, location):
         """."""
