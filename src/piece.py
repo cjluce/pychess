@@ -2,6 +2,7 @@
 
 
 from enum import Enum
+from itertools import count
 
 
 class EnumPiece(Enum):
@@ -25,12 +26,28 @@ class EnumColor(Enum):
 class Piece:
     """."""
 
+    id_iter = count()
+
     def __init__(self, piece: EnumPiece, color: EnumColor):
         """."""
+        self.id = next(self.id_iter)
         self.piece = piece
         self.color = color
         self.moved = False
         self.can_enpassant = False
+        self.tag = self.create_tag()
+
+    def create_tag(self):
+        """."""
+        color_dict = {EnumColor.WHITE: "white",
+                      EnumColor.BLACK: "black"}
+        piece_dict = {EnumPiece.PAWN: "pawn",
+                      EnumPiece.BISHOP: "bishop",
+                      EnumPiece.KNIGHT: "knight",
+                      EnumPiece.ROOK: "rook",
+                      EnumPiece.QUEEN: "queen",
+                      EnumPiece.KING: "king"}
+        return f"{color_dict[self.color]}_{piece_dict[self.piece]}"
 
     def __str__(self):
         """."""

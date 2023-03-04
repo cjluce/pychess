@@ -38,6 +38,10 @@ class Board:
 
         self.init_board()
 
+    def get_board(self):
+        """."""
+        return self.board
+
     def __str__(self):
         """."""
         sa = [" A  B  C  D  E  F  G  H |  ",

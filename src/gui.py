@@ -1,78 +1,111 @@
 """."""
-import dearpygui.dearpygui as dpg
-
-# Piece images taken from:
-# https://commons.wikimedia.org/wiki/Category:SVG_chess_pieces
-# /home/lucec/code/python/pychess/assets/pieces/black_king.png
-
-dpg.create_context()
-
-imcolors = ["white", "black"]
-impieces = ["bishop", "king", "knight", "pawn", "queen", "rook"]
-imtags = []
-
-for imcolor in imcolors:
-    for impiece in impieces:
-        imtag = f"{imcolor}_{impiece}"
-        imtags.append(imtag)
-
-        imdata = dpg.load_image(
-            f"../assets/pieces/{imtag}.png"
-        )  # 0:widths,1:heights,2:channels,3:data
-
-        with dpg.texture_registry():
-            dpg.add_dynamic_texture(width=imdata[0],
-                                    height=imdata[1],
-                                    default_value=imdata[3],
-                                    tag=f"{imtag}")
+import pyglet
+from pyglet.window import mouse
+from pyglet.sprite import Sprite
+from pyglet.resource import image
+from pyglet import shapes
 
 
-def change_text(sender, app_data):
+pyglet.resource.path = ['../assets']
+pyglet.resource.reindex()
+
+window = pyglet.window.Window()
+boardbatch = pyglet.graphics.Batch()
+piecebatch = pyglet.graphics.Batch()
+
+# image = image("pieces/white_queen.png")
+
+tags = [f"{imc}_{imp}"
+        for imc in ["white", "black"]
+        for imp in ["bishop", "king", "knight", "pawn", "queen", "rook"]]
+images = {}
+for tag in tags:
+    images[tag] = image(f"pieces/{tag}.png", )
+
+# sprites = [
+#     Sprite(
+#         image(f"pieces/{tag}.png"),
+#         batch=piecebatch)
+#     for tag in tags]
+
+squares = []
+lightcolor = (249, 208, 170)
+darkcolor = tuple([255 - c for c in lightcolor])
+curcolor, oppcolor = darkcolor, lightcolor
+boardtopixel = []
+for y in range(0, 400, 50):
+    for x in range(0, 400, 50):
+        squares.append(shapes.Rectangle(x=x,
+                                        y=y,
+                                        width=50,
+                                        height=50,
+                                        color=curcolor,
+                                        batch=boardbatch))
+        curcolor, oppcolor = oppcolor, curcolor
+        boardtopixel.append((x, y))
+    curcolor, oppcolor = oppcolor, curcolor
+
+pixeltoboard = {}
+for pixel_index in range(len(boardtopixel)):
+    pixel = boardtopixel[pixel_index]
+    pixeltoboard[pixel] = pixel_index
+
+import board
+b = board.Board()
+sprites = []
+for piece_index in range(len(b.board)):
+    piece = b.board[piece_index]
+    if piece is None:
+        continue
+    print(piece.tag)
+    sprites.append(
+        Sprite(
+            image(f"pieces/{piece.tag}.png"),
+            x=boardtopixel[piece_index][0],
+            y=boardtopixel[piece_index][1],
+            batch=piecebatch)
+    )
+
+
+@window.event
+def on_mouse_press(x, y, button, modifiers):
     """."""
-    dpg.set_value("mouseloc", f"Mouse Location: {app_data}")
+    if button == mouse.LEFT:
+        print('The left mouse button was pressed.')
 
 
-# with dpg.handler_registry():
-    # dpg.add_mouse_move_handler(callback=change_text)
-#     dpg.add_mouse_drag_handler(callback=change_text)
-
-with dpg.item_handler_registry(tag="widget handler") as handler:
-    dpg.add_item_clicked_handler(callback=change_text)
-
-size = 510
-with dpg.window(label="PyChess"):
-    dpg.add_text("Mouse Location", tag="mouseloc")
-    with dpg.drawlist(width=size, height=size):
-        # This is kind of a fun way to define the colors for now.
-        with dpg.draw_layer(tag="board_layer"):
-
-            light = (243, 205, 170)
-            dark = tuple([255 - light[i] for i in range(3)])
-            line = tuple([(light[i] - dark[i]) / 2 for i in range(3)])
-
-            color, oppcolor = light, dark
-            for xmin in range(0, 400, 50):
-                for ymin in range(0, 400, 50):
-                    dpg.draw_rectangle((xmin, ymin),
-                                       (xmin + 50, ymin + 50),
-                                       fill=color,
-                                       color=line,
-                                       thickness=10)
-                    color, oppcolor = oppcolor, color
-                color, oppcolor = oppcolor, color
-        s = 0
-        for p in impieces:
-            t = f"black_{p}"
-            dpg.draw_image(t, (s, 0), (s + 45, 45), tag=f"_{t}")
-            s += 50
+def between(testval, val1, val2):
+    """."""
+    if val1 <= testval and testval <= val2:
+        return True
+    return False
 
 
-# TODO: Map each square to a coordinate root
+@window.event
+def on_mouse_drag(x, y, dx, dy, buttons, modifiers):
+    """."""
+    if buttons & mouse.LEFT:
+        sprite = None
+        for sp in sprites:
+            if not between(x, sp.x, sp.x + 50):
+                continue
+            if not between(y, sp.y, sp.y + 50):
+                continue
+            sprite = sp
+            break
+        if sprite is None:
+            return False
+        sprite.x += dx
+        sprite.y += dy
 
-dpg.bind_item_handler_registry("mouseloc", "widget handler")
 
-dpg.create_viewport(title='PyChess', width=size, height=size)
-dpg.setup_dearpygui()
-dpg.show_viewport()
-dpg.start_dearpygui()
-dpg.destroy_context()
+@window.event
+def on_draw():
+    """."""
+    window.clear()
+    # image.blit(window.width//2, window.height//2)
+    boardbatch.draw()
+    piecebatch.draw()
+
+
+pyglet.app.run()
