@@ -4,108 +4,148 @@ from pyglet.window import mouse
 from pyglet.sprite import Sprite
 from pyglet.resource import image
 from pyglet import shapes
-
-
-pyglet.resource.path = ['../assets']
-pyglet.resource.reindex()
-
-window = pyglet.window.Window()
-boardbatch = pyglet.graphics.Batch()
-piecebatch = pyglet.graphics.Batch()
-
-# image = image("pieces/white_queen.png")
-
-tags = [f"{imc}_{imp}"
-        for imc in ["white", "black"]
-        for imp in ["bishop", "king", "knight", "pawn", "queen", "rook"]]
-images = {}
-for tag in tags:
-    images[tag] = image(f"pieces/{tag}.png", )
-
-# sprites = [
-#     Sprite(
-#         image(f"pieces/{tag}.png"),
-#         batch=piecebatch)
-#     for tag in tags]
-
-squares = []
-lightcolor = (249, 208, 170)
-darkcolor = tuple([255 - c for c in lightcolor])
-curcolor, oppcolor = darkcolor, lightcolor
-boardtopixel = []
-for y in range(0, 400, 50):
-    for x in range(0, 400, 50):
-        squares.append(shapes.Rectangle(x=x,
-                                        y=y,
-                                        width=50,
-                                        height=50,
-                                        color=curcolor,
-                                        batch=boardbatch))
-        curcolor, oppcolor = oppcolor, curcolor
-        boardtopixel.append((x, y))
-    curcolor, oppcolor = oppcolor, curcolor
-
-pixeltoboard = {}
-for pixel_index in range(len(boardtopixel)):
-    pixel = boardtopixel[pixel_index]
-    pixeltoboard[pixel] = pixel_index
-
 import board
-b = board.Board()
-sprites = []
-for piece_index in range(len(b.board)):
-    piece = b.board[piece_index]
-    if piece is None:
-        continue
-    print(piece.tag)
-    sprites.append(
-        Sprite(
-            image(f"pieces/{piece.tag}.png"),
-            x=boardtopixel[piece_index][0],
-            y=boardtopixel[piece_index][1],
-            batch=piecebatch)
-    )
 
 
-@window.event
-def on_mouse_press(x, y, button, modifiers):
+class ChessGUI(pyglet.window.Window):
     """."""
-    if button == mouse.LEFT:
-        print('The left mouse button was pressed.')
 
+    def __init__(self):
+        """."""
+        super(ChessGUI, self).__init__(600,
+                                       600,
+                                       resizable=False,
+                                       caption='Chess',
+                                       config=pyglet.gl.Config(
+                                        double_buffer=True
+                                       ))
+        self.moving_piece = False
+        self.move_from = -1
 
-def between(testval, val1, val2):
-    """."""
-    if val1 <= testval and testval <= val2:
-        return True
-    return False
+        # =================================
+        self.boardbatch = pyglet.graphics.Batch()
+        self.piecebatch = pyglet.graphics.Batch()
 
+        self.tags = [f"{imc}_{imp}"
+                     for imc in ["white", "black"]
+                     for imp in ["bishop", "king",
+                                 "knight", "pawn",
+                                 "queen", "rook"]]
+        self.images = {}
+        for tag in self.tags:
+            self.images[tag] = image(f"pieces/{tag}.png", )
 
-@window.event
-def on_mouse_drag(x, y, dx, dy, buttons, modifiers):
-    """."""
-    if buttons & mouse.LEFT:
-        sprite = None
-        for sp in sprites:
-            if not between(x, sp.x, sp.x + 50):
+        self.squares = []
+        lightcolor = (249, 208, 170)
+        darkcolor = tuple([255 - c for c in lightcolor])
+        curcolor, oppcolor = darkcolor, lightcolor
+        self.boardtopixel = []
+        for y in range(0, 400, 50):
+            for x in range(0, 400, 50):
+                self.squares.append(
+                    shapes.Rectangle(x=x,
+                                     y=y,
+                                     width=50,
+                                     height=50,
+                                     color=curcolor,
+                                     batch=self.boardbatch))
+                curcolor, oppcolor = oppcolor, curcolor
+                self.boardtopixel.append((x, y))
+            curcolor, oppcolor = oppcolor, curcolor
+
+        self.pixeltoboard = {}
+        for pixel_index in range(len(self.boardtopixel)):
+            pixel = self.boardtopixel[pixel_index]
+            self.pixeltoboard[pixel] = pixel_index
+
+        # self.b = board.Board()
+        # self.sprites = []
+        # for piece, loc in self.b.pieces.items():
+        #     print(piece.tag)
+        #     self.sprites.append(
+        #         Sprite(
+        #             image(f"pieces/{piece.tag}.png"),
+        #             x=self.boardtopixel[loc][0],
+        #             y=self.boardtopixel[loc][1],
+        #             batch=self.piecebatch)
+        #     )
+        self.b = board.Board()
+        self.render_pieces()
+
+        # =================================
+
+    def render_pieces(self):
+        """."""
+        self.sprites = []
+        # print(self.b.pieces.items())
+        for piece, loc in self.b.pieces.items():
+            if piece is None:
                 continue
-            if not between(y, sp.y, sp.y + 50):
-                continue
-            sprite = sp
-            break
-        if sprite is None:
-            return False
-        sprite.x += dx
-        sprite.y += dy
+            # print(piece.tag)
+            self.sprites.append(
+                Sprite(
+                    image(f"pieces/{piece.tag}.png"),
+                    x=self.boardtopixel[loc][0],
+                    y=self.boardtopixel[loc][1],
+                    batch=self.piecebatch)
+            )
+
+    # @window.event
+    def on_draw(self):
+        """."""
+        window.clear()
+        # image.blit(window.width//2, window.height//2)
+        self.render_pieces()
+        self.boardbatch.draw()
+        self.piecebatch.draw()
+
+    # @window.event
+    def on_mouse_release(self, x, y, button, modifiers):
+        """."""
+        if button == mouse.LEFT:
+            print('The left mouse button was release.')
+            self.handle_click(x, y)
+
+    def handle_click(self, x, y):
+        """."""
+        if self.moving_piece:
+            square = self.get_square(x, y)
+            if square is None:
+                pass
+            self.b.move(self.move_from, square)
+            self.moving_piece, self.move_from = False, -1
+            return
+        square = self.get_square(x, y)
+        if square is None:
+            pass
+        piece = self.b.get(square)
+        if piece is None:
+            return
+        print("Moving: ", piece.tag)
+        self.moving_piece = True
+        self.move_from = square
+
+    def get_square(self, x, y):
+        """Get the internal board square from a square region."""
+        point = (50 * (x // 50), 50 * (y // 50))
+        if point in self.pixeltoboard:
+            return self.pixeltoboard[point]
+        return None
+
+    def between(testval, val1, val2):
+        """."""
+        if val1 <= testval and testval <= val2:
+            return True
+        return False
+
+    def update(self, dt):
+        """."""
+        self.on_draw()
 
 
-@window.event
-def on_draw():
-    """."""
-    window.clear()
-    # image.blit(window.width//2, window.height//2)
-    boardbatch.draw()
-    piecebatch.draw()
-
-
-pyglet.app.run()
+if __name__ == "__main__":
+    pyglet.resource.path = ['../assets']
+    pyglet.resource.reindex()
+    window = ChessGUI()
+    # pyglet.clock.schedule_interval(window.update, 1000.)
+    pyglet.app.run()

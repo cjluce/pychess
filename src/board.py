@@ -366,8 +366,8 @@ class Board:
     def move(self, movefrom, moveto):
         """Evaluate the move given in the form of, e.g., ("A1", "B3")."""
         # TODO: Handle the case where the move strings are invalid.
-        movefromi = self.parse_movestring(movefrom)
-        movetoi = self.parse_movestring(moveto)
+        movefromi = self.parse_location(movefrom)
+        movetoi = self.parse_location(moveto)
 
         moving_piece = self.get(movefromi)
 
