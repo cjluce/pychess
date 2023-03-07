@@ -22,10 +22,10 @@ class ChessGUI(pyglet.window.Window):
         self.moving_piece = False
         self.move_from = -1
 
-        # =================================
         self.boardbatch = pyglet.graphics.Batch()
         self.piecebatch = pyglet.graphics.Batch()
 
+        # TODO: All of this should be in initialization functions....
         self.tags = [f"{imc}_{imp}"
                      for imc in ["white", "black"]
                      for imp in ["bishop", "king",
@@ -58,21 +58,8 @@ class ChessGUI(pyglet.window.Window):
             pixel = self.boardtopixel[pixel_index]
             self.pixeltoboard[pixel] = pixel_index
 
-        # self.b = board.Board()
-        # self.sprites = []
-        # for piece, loc in self.b.pieces.items():
-        #     print(piece.tag)
-        #     self.sprites.append(
-        #         Sprite(
-        #             image(f"pieces/{piece.tag}.png"),
-        #             x=self.boardtopixel[loc][0],
-        #             y=self.boardtopixel[loc][1],
-        #             batch=self.piecebatch)
-        #     )
         self.b = board.Board()
         self.render_pieces()
-
-        # =================================
 
     def render_pieces(self):
         """."""
@@ -102,6 +89,8 @@ class ChessGUI(pyglet.window.Window):
     # @window.event
     def on_mouse_release(self, x, y, button, modifiers):
         """."""
+        # TODO: Right click should probably unset the "moving_piece"
+        # flag
         if button == mouse.LEFT:
             print('The left mouse button was release.')
             self.handle_click(x, y)
