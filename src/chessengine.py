@@ -54,7 +54,6 @@ class ChessEngine:
 
         i = move.index
         while i > 0 and i < 63:
-        # for i in range(move.index, 63, direction):
             i += direction
             if self._valid_square_test(i, piece.color):
                 target_moves.append(i)
@@ -199,7 +198,7 @@ class ChessEngine:
                           self._north,
                           self._west,
                           self._east,
-                          self._west]:
+                          self._south]:
             target_moves += self._valid_square_linear_path(move,
                                                            piece,
                                                            direction)
