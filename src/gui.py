@@ -5,6 +5,7 @@ from pyglet.sprite import Sprite
 from pyglet.resource import image
 from pyglet import shapes
 import board
+from move import Move
 
 
 class ChessGUI(pyglet.window.Window):
@@ -59,19 +60,37 @@ class ChessGUI(pyglet.window.Window):
             self.pixeltoboard[pixel] = pixel_index
 
         self.b = board.Board()
+        self.b.init_board()
         self.render_pieces()
+
+    def piecestr_to_tag(self, piecestr):
+        """."""
+        colorstr = piecestr[0]
+        chessstr = piecestr[1]
+        color = ""
+        if colorstr == "W":
+            color = "white"
+        else:
+            color = "black"
+        piecestr_to_tag = {"P": "pawn",
+                           "B": "bishop",
+                           "N": "knight",
+                           "R": "rook",
+                           "Q": "queen",
+                           "K": "king"}
+        return f"{color}_{piecestr_to_tag[chessstr]}"
 
     def render_pieces(self):
         """."""
         self.sprites = []
         # print(self.b.pieces.items())
-        for piece, loc in self.b.pieces.items():
+        for loc, piece in self.b.pieces.items():
             if piece is None:
                 continue
             # print(piece.tag)
             self.sprites.append(
                 Sprite(
-                    image(f"pieces/{piece.tag}.png"),
+                    image(f"pieces/{self.piecestr_to_tag(str(piece))}.png"),
                     x=self.boardtopixel[loc][0],
                     y=self.boardtopixel[loc][1],
                     batch=self.piecebatch)
@@ -107,10 +126,10 @@ class ChessGUI(pyglet.window.Window):
         square = self.get_square(x, y)
         if square is None:
             pass
-        piece = self.b.get(square)
+        piece = self.b.get(Move(square))
         if piece is None:
             return
-        print("Moving: ", piece.tag)
+        print("Moving: ", piece)
         self.moving_piece = True
         self.move_from = square
 

@@ -34,10 +34,23 @@ class Board:
     def __init__(self):
         """."""
         self.board = [None] * 64
+        self.pieces = {}
+        self.update_pieces()
 
     def init_board(self, fenstring=default_fen):
         """."""
         self.parse_fen(fenstring)
+        self.update_pieces()
+
+    def update_pieces(self):
+        """."""
+        i = 0
+        for piece in self.board:
+            if piece is None:
+                i += 1
+                continue
+            self.pieces[i] = str(piece)
+            i += 1
 
     def __str__(self):
         """."""
