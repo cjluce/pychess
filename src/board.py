@@ -1,7 +1,7 @@
 """Define the main board's structure."""
 
 
-from piece import Piece
+import piece as p
 from move import Move
 
 
@@ -29,9 +29,15 @@ class Board:
 
     """
 
+    default_fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
+
     def __init__(self):
         """."""
         self.board = [None] * 64
+
+    def init_board(self, fenstring=default_fen):
+        """."""
+        self.parse_fen(fenstring)
 
     def __str__(self):
         """."""
@@ -64,7 +70,7 @@ class Board:
         otherwise False.
 
         """
-        if not isinstance(value, Piece) and value is not None:
+        if not isinstance(value, p.Piece) and value is not None:
             print(f"""You tried to set {move.index} to an invalid
             move: {value}""")
             return False
@@ -72,42 +78,38 @@ class Board:
         self.board[move.index] = value
         return True
 
-    def get(self, move: Move) -> Piece:
+    def get(self, move: Move) -> p.Piece:
         """Return the value of the board at index `moveinput`."""
         return self.board[move.index]
 
-    # TODO: I'm probably not going to have the board implement the
-    # "move" method and am considering moving this to the ChessEngine
-    # class. We will see how well that works later.
-    def move(self, movefrom, moveto):
-        """Handle the moving of pieces on the internal board.
+    def parse_fen(self, fenstring):
+        """Parse the FEN string.
 
-        This is a little more nuanced than just moving the piece at
-        `movefrom` to the square at `moveto`. Let's assume that there
-        is a piece located at `movefrom`. There are a few cases:
-
-        0) Either the requested move is valid or not. I'm not sure
-        whether I only want to handle valid moves, here, or if I will
-        allow invalid moves on the internal board. Let's assume for
-        the following cases that the move is valid.
-
-        1) There is not a piece at `moveto`, and we simply shift the
-        piece from `movefrom` to `moveto`.
-
-        2) There is an enemy piece at `moveto`, and we must remove
-        that piece from the board, and then move the friendly piece to
-        the respective square.
-
-        3) The move requested is identified as a castle (will need to
-        be cross-verified by the ChessEngine class).
-
-        4) The move requested is identified as an en passant (will
-        need to be cross-verified by the ChessEngine class).
+        rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1
 
         """
-        # try:
-        #     movefrom_index = self.parse_moveinput(movefrom)
-        #     moveto_index = self.parse_moveinput(moveto)
-        # except (ValueError, KeyError) as e:
-        #     print(f"Failed to parse move: {e}")
-        pass
+        # TODO: Implement the rest of the fen string, clean up the
+        # board parsing.
+        fen_chunks = fenstring.split(" ")
+
+        fen_board = fen_chunks[0].split("/")
+
+        fen_index = 56
+        fen_dict = {'p': p.Pawn,
+                    'b': p.Bishop,
+                    'n': p.Knight,
+                    'r': p.Rook,
+                    'q': p.Queen,
+                    'k': p.King}
+        for row in fen_board:
+            for f in row:
+                if f.lower() in fen_dict:
+                    color = p.EnumColor.WHITE if f.lower() != f else p.EnumColor.BLACK
+                    self.set(Move(fen_index), fen_dict[f.lower()](color))
+                    fen_index += 1
+                else:
+                    skip = int(f)
+                    for s in range(skip):
+                        self.set(Move(fen_index), None)
+                        fen_index += 1
+            fen_index -= 16

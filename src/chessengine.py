@@ -21,12 +21,12 @@ class ChessEngine:
         """."""
         self.board = board
         self._dispatch_piecetype_validation = {
-            p.Pawn: self._get_valid_moves_pawn,
-            p.Knight: self._get_valid_moves_knight,
-            p.Bishop: self._get_valid_moves_bishop,
-            p.Rook: self._get_valid_moves_rook,
-            p.Queen: self._get_valid_moves_queen,
-            p.King: self._get_valid_moves_king
+            "<class 'piece.Pawn'>": self._get_valid_moves_pawn,
+            "<class 'piece.Knight'>": self._get_valid_moves_knight,
+            "<class 'piece.Bishop'>": self._get_valid_moves_bishop,
+            "<class 'piece.Rook'>": self._get_valid_moves_rook,
+            "<class 'piece.Queen'>": self._get_valid_moves_queen,
+            "<class 'piece.King'>": self._get_valid_moves_king
         }
 
     # TODO: I think I'll need to add a color here.
@@ -38,7 +38,7 @@ class ChessEngine:
         """."""
         if not self.valid_index(testindex):
             return False
-        testpiece = self.board.get(testindex)
+        testpiece = self.board.get(Move(testindex))
         if testpiece is None:
             return True
         if testpiece.oppositecolor == color:
@@ -52,9 +52,14 @@ class ChessEngine:
         """."""
         target_moves = []
 
-        for i in range(move.index, 63, direction):
+        i = move.index
+        while i > 0 and i < 63:
+        # for i in range(move.index, 63, direction):
+            i += direction
             if self._valid_square_test(i, piece.color):
                 target_moves.append(i)
+            else:
+                break
         return target_moves
 
     # TODO: It might be nice to have a way of referring to relative
@@ -88,9 +93,31 @@ class ChessEngine:
         if piece is None:
             return target_moves
 
-        piecetype = type(piece)
-        target_moves = self._dispatch_piecetype_validation[piecetype](move,
-                                                                      piece)
+        # TODO: I want to use my dispatcher, but it is currently broken.
+        if isinstance(piece, p.Pawn):
+            print("Pawn")
+            target_moves = self._get_valid_moves_pawn(move, piece)
+        if isinstance(piece, p.Bishop):
+            print("Bishop")
+            target_moves = self._get_valid_moves_bishop(move, piece)
+        elif isinstance(piece, p.Knight):
+            print("Knight")
+            target_moves = self._get_valid_moves_knight(move, piece)
+        elif isinstance(piece, p.Rook):
+            print("Rook")
+            target_moves = self._get_valid_moves_rook(move, piece)
+        elif isinstance(piece, p.Queen):
+            print("Queen")
+            target_moves = self._get_valid_moves_queen(move, piece)
+        elif isinstance(piece, p.King):
+            print("King")
+            target_moves = self._get_valid_moves_king(move, piece)
+        # piecetype = str(type(piece))
+        # print(piecetype in self._dispatch_piecetype_validation, piecetype)
+        # print(self._dispatch_piecetype_validation.keys())
+        # target_moves = self._dispatch_piecetype_validation[piecetype](move,
+        #                                                               piece)
+        return target_moves
 
     def _get_valid_moves_pawn(self, move: Move, piece: p.Piece):
         """."""
@@ -113,9 +140,19 @@ class ChessEngine:
         """."""
         target_moves = []
 
+        # Knights require some extra move validation in the case of
+        # edge wrapping.
+        piecerank = (move.index % 8) + 1
+        piecefile = (move.index // 8) + 1
         relative_indices = [-6, 10, 17, 15, 6, -10, -17, -15]
         for d_i in relative_indices:
             testindex = move.index + d_i
+            testrank = (testindex % 8) + 1
+            testfile = (testindex // 8) + 1
+            if abs(testrank - piecerank) > 2:
+                continue
+            if abs(testfile - piecefile) > 2:
+                continue
             if self._valid_square_test(testindex, piece):
                 target_moves.append(testindex)
         return target_moves

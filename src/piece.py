@@ -32,7 +32,7 @@ class Piece:
         """."""
         self.id = next(self.id_iter)
         self.color = color
-        self.moved = False
+        self.has_moved = False
         self.oppositecolor = self.get_oppositecolor()
 
     def __str__(self):
