@@ -6,6 +6,7 @@ from pyglet.resource import image
 from pyglet import shapes
 import board
 from move import Move
+from chessengine import ChessEngine
 
 
 class ChessGUI(pyglet.window.Window):
@@ -25,6 +26,7 @@ class ChessGUI(pyglet.window.Window):
 
         self.boardbatch = pyglet.graphics.Batch()
         self.piecebatch = pyglet.graphics.Batch()
+        self.movesbatch = pyglet.graphics.Batch()
 
         # TODO: All of this should be in initialization functions....
         self.tags = [f"{imc}_{imp}"
@@ -60,6 +62,7 @@ class ChessGUI(pyglet.window.Window):
             self.pixeltoboard[pixel] = pixel_index
 
         self.b = board.Board()
+        self.engine = ChessEngine(self.b)
         self.b.init_board()
         self.render_pieces()
 
@@ -96,6 +99,21 @@ class ChessGUI(pyglet.window.Window):
                     batch=self.piecebatch)
             )
 
+    def render_moves(self, moves):
+        """."""
+        self.validmoves = []
+        for loc in moves:
+            boarderpix = self.boardtopixel[loc]
+            self.validmoves.append(
+                shapes.Rectangle(
+                    x=boarderpix[0],
+                    y=boarderpix[1],
+                    width=50,
+                    height=50,
+                    color=(0, 255, 0),
+                    batch=self.movesbatch)
+            )
+
     # @window.event
     def on_draw(self):
         """."""
@@ -103,6 +121,7 @@ class ChessGUI(pyglet.window.Window):
         # image.blit(window.width//2, window.height//2)
         self.render_pieces()
         self.boardbatch.draw()
+        self.movesbatch.draw()
         self.piecebatch.draw()
 
     # @window.event
@@ -117,10 +136,20 @@ class ChessGUI(pyglet.window.Window):
     def handle_click(self, x, y):
         """."""
         if self.moving_piece:
+            self.validmoves = []
             square = self.get_square(x, y)
             if square is None:
-                pass
-            self.b.move(self.move_from, square)
+                self.moving_piece, self.move_from = False, -1
+                return
+            if square not in self.moves:
+                self.moving_piece, self.move_from = False, -1
+                return
+            self.engine.move(self.movingpiece,
+                             Move(self.move_from),
+                             Move(square),
+                             self.moves,
+                             self.b)
+            # self.b.move(self.move_from, square)
             self.moving_piece, self.move_from = False, -1
             return
         square = self.get_square(x, y)
@@ -130,8 +159,12 @@ class ChessGUI(pyglet.window.Window):
         if piece is None:
             return
         print("Moving: ", piece)
+        self.movingpiece = piece
+        self.moves = self.engine.get_valid_moves(square)
+        self.render_moves(self.moves)
         self.moving_piece = True
         self.move_from = square
+        print(self.b)
 
     def get_square(self, x, y):
         """Get the internal board square from a square region."""

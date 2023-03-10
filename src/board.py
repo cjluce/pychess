@@ -44,6 +44,7 @@ class Board:
 
     def update_pieces(self):
         """."""
+        self.pieces = {}
         i = 0
         for piece in self.board:
             if piece is None:
@@ -89,6 +90,7 @@ class Board:
             return False
 
         self.board[move.index] = value
+        self.update_pieces()
         return True
 
     def get(self, move: Move) -> p.Piece:

@@ -15,7 +15,7 @@ class ChessEngine:
     _northeast = 9
     _northwest = 7
     _southeast = -7
-    _southwest = 9
+    _southwest = -9
 
     def __init__(self, board: Board):
         """."""
@@ -29,21 +29,74 @@ class ChessEngine:
             "<class 'piece.King'>": self._get_valid_moves_king
         }
 
-    # TODO: I think I'll need to add a color here.
-    def is_board_check(self, board: Board):
-        """Check whether the board is currently in check."""
-        pass
-
-    def _valid_square_test(self, testindex, color: p.EnumColor):
+    def _get_board(self, board: Board) -> Board:
         """."""
-        if not self.valid_index(testindex):
-            return False
-        testpiece = self.board.get(Move(testindex))
-        if testpiece is None:
-            return True
-        if testpiece.oppositecolor == color:
-            return True
+        if board is None:
+            return self.board
+        return board
+
+    # TODO: I think I'll need to add a color here.
+    def is_board_check(self, board: Board, color: p.EnumColor):
+        """Check whether the board is currently in check."""
+        board = self._get_board(board)
+
         return False
+
+    # TODO: This method is preliminary as I debate the best way to set
+    # it up.
+    def move(self, piece: p.Piece, movefrom: Move, moveto: Move, validmoves,
+             board: Board = None):
+        """."""
+        if moveto.index not in validmoves:
+            "You tried to make an invalid move."
+            return False
+
+        # Pawn requires en passant checking, king and rook require
+        # castle checking. Everything else just moves and takes.
+        if isinstance(piece, p.Pawn):
+            enpassant = False
+            piece.has_moved = True
+            if enpassant:
+                return True
+        if isinstance(piece, p.Rook):
+            castlecondition = False
+            piece.has_moved = True
+            if castlecondition:
+                return True
+        if isinstance(piece, p.King):
+            castlecondition = False
+            piece.has_moved = True
+            if castlecondition:
+                return True
+
+        board.set(movefrom, None)
+        board.set(moveto, piece)
+
+        return True
+
+    def _valid_square_test(self, testindex, color: p.EnumColor,
+                           board: Board = None):
+        """."""
+        board = self._get_board(board)
+
+        if not self.valid_index(testindex):
+            return 0
+        testpiece = board.get(Move(testindex))
+        if testpiece is None:
+            return 1
+        if testpiece.oppositecolor == color:
+            return 2
+        return 0
+
+    def _valid_lag_distance(self, ind0, ind1):
+        file0, rank0 = divmod(ind0, 8)
+        file1, rank1 = divmod(ind1, 8)
+
+        if abs(file1 - file0) > 1:
+            return False
+        if abs(rank1 - rank0) > 1:
+            return False
+        return True
 
     def _valid_square_linear_path(self,
                                   move: Move,
@@ -52,11 +105,19 @@ class ChessEngine:
         """."""
         target_moves = []
 
+        ind0, ind1 = move.index, move.index
         i = move.index
         while i > 0 and i < 63:
             i += direction
-            if self._valid_square_test(i, piece.color):
+            ind1 = i
+            if not self._valid_lag_distance(ind0, ind1):
+                break
+            ind0, ind1 = ind1, ind0
+            status = self._valid_square_test(i, piece.color)
+            if status:
                 target_moves.append(i)
+                if status == 2:
+                    break
             else:
                 break
         return target_moves
@@ -118,12 +179,15 @@ class ChessEngine:
         #                                                               piece)
         return target_moves
 
-    def _get_valid_moves_pawn(self, move: Move, piece: p.Piece):
+    def _get_valid_moves_pawn(self, move: Move, piece: p.Piece,
+                              board: Board = None):
         """."""
         # TODO: Include en passant and promotion. For promotion, I can
         # probably just set the promotion flag and then elsewhere will
         # be a check for promotion. Lol nvm, this will happen
         # elsewhere bc i'm just appending to a list of valid moves.
+        board = self._get_board(board)
+
         target_moves = []
 
         direction = 1 if piece.color == p.EnumColor.WHITE else -1
@@ -134,16 +198,38 @@ class ChessEngine:
         relative_indices = [i * direction for i in relative_indices]
         for d_i in relative_indices:
             testindex = move.index + d_i
-            if self._valid_square_test(testindex, piece):
+            if not self.valid_index(testindex):
+                break
+            testpiece = board.get(Move(testindex))
+            if testpiece is None:
                 target_moves.append(testindex)
+            else:
+                break
+        possible_attacks = [self._northeast, self._northwest]
+        possible_attacks = [i * direction for i in possible_attacks]
+        for d_i in possible_attacks:
+            testindex = move.index + d_i
+            if not self.valid_index(testindex):
+                continue
+            testpiece = board.get(Move(testindex))
+            if testpiece is None:
+                continue
+            if testpiece.oppositecolor == piece.color:
+                target_moves.append(testindex)
+        # TODO: Add in en passant logic
         return target_moves
 
-    def _get_valid_moves_knight(self, move: Move, piece: p.Piece):
+    def _get_valid_moves_knight(self, move: Move, piece: p.Piece,
+                                board: Board = None):
         """."""
+        board = self._get_board(board)
+
         target_moves = []
 
         # Knights require some extra move validation in the case of
         # edge wrapping.
+        # As it turns out, divmod(index, 8) will produce a tuple with
+        # (. // 8, . % 8).
         piecerank = (move.index % 8) + 1
         piecefile = (move.index // 8) + 1
         relative_indices = [-6, 10, 17, 15, 6, -10, -17, -15]
@@ -159,8 +245,11 @@ class ChessEngine:
                 target_moves.append(testindex)
         return target_moves
 
-    def _get_valid_moves_bishop(self, move: Move, piece: p.Piece):
+    def _get_valid_moves_bishop(self, move: Move, piece: p.Piece,
+                                board: Board = None):
         """."""
+        board = self._get_board(board)
+
         target_moves = []
 
         for direction in [self._northeast,
@@ -173,8 +262,11 @@ class ChessEngine:
 
         return target_moves
 
-    def _get_valid_moves_rook(self, move: Move, piece: p.Piece):
+    def _get_valid_moves_rook(self, move: Move, piece: p.Piece,
+                              board: Board = None):
         """."""
+        board = self._get_board(board)
+
         target_moves = []
 
         for direction in [self._north,
@@ -205,10 +297,20 @@ class ChessEngine:
 
         return target_moves
 
-    def _get_valid_moves_king(self, move: Move, piece: p.Piece):
+    def _get_valid_moves_king(self, move: Move, piece: p.Piece,
+                              board: Board = None):
         """."""
+        board = self._get_board(board)
+
         target_moves = []
-        relative_indices = [7, 8, 9, -1, 1, -9, -8, -7]
+        relative_indices = [self._northeast,
+                            self._northwest,
+                            self._southeast,
+                            self._southwest,
+                            self._north,
+                            self._west,
+                            self._east,
+                            self._south]
 
         for d_i in relative_indices:
             testindex = move.index + d_i
