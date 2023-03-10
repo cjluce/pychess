@@ -127,9 +127,12 @@ class ChessEngine:
         # elsewhere bc i'm just appending to a list of valid moves.
         target_moves = []
 
+        direction = 1 if piece.color == p.EnumColor.WHITE else -1
+
         relative_indices = [8]
         if not piece.has_moved:
             relative_indices += [16]
+        relative_indices = [i * direction for i in relative_indices]
         for d_i in relative_indices:
             testindex = move.index + d_i
             if self._valid_square_test(testindex, piece):
