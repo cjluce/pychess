@@ -69,6 +69,12 @@ class Pawn(Piece):
         """."""
         super().__init__(color)
         self.can_enpassant = False
+        # This value will be attached to an attacking pawn, and will
+        # equal the piece that the said pawn can attack via en passant
+        self.en_passant_attacked = None
+        # This value is equal to the index of the piece that the
+        # attacking pawn can attack
+        self.en_passant_piece = None
 
     def get_piece_str(self):
         """."""
@@ -113,6 +119,7 @@ class Rook(Piece):
     def __init__(self, color: EnumColor):
         """."""
         super().__init__(color)
+        self.can_castle = False
 
     def get_piece_str(self):
         """."""
@@ -137,6 +144,9 @@ class King(Piece):
     def __init__(self, color: EnumColor):
         """."""
         super().__init__(color)
+        self.can_castle = False
+        self.can_castle_kings = False
+        self.can_castle_queens = False
 
     def get_piece_str(self):
         """."""

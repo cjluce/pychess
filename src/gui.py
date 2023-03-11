@@ -129,7 +129,8 @@ class ChessGUI(pyglet.window.Window):
         """."""
         # TODO: Right click should probably unset the "moving_piece"
         # flag
-        if button == mouse.LEFT:
+        click_in_board = x < 400 and y < 400
+        if button == mouse.LEFT and click_in_board:
             print('The left mouse button was release.')
             self.handle_click(x, y)
 
@@ -158,7 +159,7 @@ class ChessGUI(pyglet.window.Window):
         piece = self.b.get(Move(square))
         if piece is None:
             return
-        print("Moving: ", piece)
+        print(f"Moving: {piece}, {square}")
         self.movingpiece = piece
         self.moves = self.engine.get_valid_moves(square)
         self.render_moves(self.moves)

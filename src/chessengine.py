@@ -84,7 +84,7 @@ class ChessEngine:
         testpiece = board.get(Move(testindex))
         if testpiece is None:
             return 1
-        if testpiece.oppositecolor == color:
+        elif testpiece.oppositecolor == color:
             return 2
         return 0
 
@@ -107,7 +107,8 @@ class ChessEngine:
 
         ind0, ind1 = move.index, move.index
         i = move.index
-        while i > 0 and i < 63:
+
+        while i >= 0 and i <= 63:
             i += direction
             ind1 = i
             if not self._valid_lag_distance(ind0, ind1):
@@ -186,6 +187,10 @@ class ChessEngine:
         # probably just set the promotion flag and then elsewhere will
         # be a check for promotion. Lol nvm, this will happen
         # elsewhere bc i'm just appending to a list of valid moves.
+
+        # TODO: There is a bug where moving a pawn along the edge
+        # where the pawn senses a capture will allow the pawn to
+        # teleport.
         board = self._get_board(board)
 
         target_moves = []
@@ -209,6 +214,8 @@ class ChessEngine:
         possible_attacks = [i * direction for i in possible_attacks]
         for d_i in possible_attacks:
             testindex = move.index + d_i
+            if not self._valid_lag_distance(move.index, testindex):
+                continue
             if not self.valid_index(testindex):
                 continue
             testpiece = board.get(Move(testindex))
@@ -241,7 +248,7 @@ class ChessEngine:
                 continue
             if abs(testfile - piecefile) > 2:
                 continue
-            if self._valid_square_test(testindex, piece):
+            if self._valid_square_test(testindex, piece.color):
                 target_moves.append(testindex)
         return target_moves
 
@@ -259,7 +266,6 @@ class ChessEngine:
             target_moves += self._valid_square_linear_path(move,
                                                            piece,
                                                            direction)
-
         return target_moves
 
     def _get_valid_moves_rook(self, move: Move, piece: p.Piece,
@@ -294,7 +300,6 @@ class ChessEngine:
             target_moves += self._valid_square_linear_path(move,
                                                            piece,
                                                            direction)
-
         return target_moves
 
     def _get_valid_moves_king(self, move: Move, piece: p.Piece,
