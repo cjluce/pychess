@@ -188,9 +188,6 @@ class ChessEngine:
         # be a check for promotion. Lol nvm, this will happen
         # elsewhere bc i'm just appending to a list of valid moves.
 
-        # TODO: There is a bug where moving a pawn along the edge
-        # where the pawn senses a capture will allow the pawn to
-        # teleport.
         board = self._get_board(board)
 
         target_moves = []
